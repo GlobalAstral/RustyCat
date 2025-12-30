@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+image = "0.25.9"
+macroquad = "0.4"
+mlua = { version = "0.11.5", features = ["lua54", "vendored"] }
