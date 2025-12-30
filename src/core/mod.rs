@@ -5,6 +5,7 @@ pub mod children_container;
 pub mod script_manager;
 pub mod transform;
 pub mod keys;
+pub mod image;
 pub mod core;
 pub mod nodelike;
 pub mod nodes;

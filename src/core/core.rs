@@ -1,7 +1,7 @@
-use std::{any::Any, error::Error, path::PathBuf};
+use std::{any::Any, error::Error, f32::consts::PI, path::PathBuf};
 
 use image::GenericImageView;
-use macroquad::{texture::Image, window::Conf};
+use macroquad::{texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::Conf};
 use mlua::{Lua, Value};
 use crate::core::vec2::Vec2;
 
@@ -26,15 +26,8 @@ impl Into<Conf> for WindowConfig {
   }
 }
 
-pub fn loadImage(path: PathBuf) -> Image {
-  let img = image::open(path).expect("Cannot load image");
-  let (w, h) = img.dimensions();
-  let rgba = img.to_rgba8().to_vec();
-  Image {
-    width: w as u16,
-    height: h as u16,
-    bytes: rgba
-  }
+pub fn radians(degrees: f32) -> f32 {
+  degrees * PI / 180.0
 }
 
 pub trait Luable {
