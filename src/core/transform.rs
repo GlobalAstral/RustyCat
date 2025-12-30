@@ -5,6 +5,7 @@ use mlua::{Lua, Table, Value};
 
 use crate::core::{core::Luable, vec2::Vec2};
 
+#[derive(Clone)]
 pub struct Transform {
   pub pos: Vec2,
   pub size: Vec2,
@@ -22,6 +23,13 @@ impl Transform {
     let actual_size = transform.size * transform.scale;
     let b = Rect::new(transform.pos.get_x() as f32, transform.pos.get_y() as f32, actual_size.get_x() as f32, actual_size.get_y() as f32);
     a.overlaps(&b)
+  }
+
+  pub fn contains(&self, pos: Vec2) -> bool {
+    let actual_size = self.size * self.scale;
+    let a = Rect::new(self.pos.get_x() as f32, self.pos.get_y() as f32, actual_size.get_x() as f32, actual_size.get_y() as f32);
+    let tmp = macroquad::math::Vec2::new(pos.get_x() as f32, pos.get_y() as f32);
+    a.contains(tmp)
   }
 }
 

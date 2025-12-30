@@ -1,6 +1,6 @@
 use std::{error::Error, fs, path::PathBuf};
 
-use macroquad::{input::{KeyCode, is_key_down, is_key_pressed, is_key_released, mouse_position}, window::{screen_height, screen_width}};
+use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, window::{screen_height, screen_width}};
 use mlua::{Chunk, Function, Lua, MultiValue, Table, Value};
 
 use crate::core::{core::Luable, keys::Stringable, vec2::Vec2};
@@ -103,6 +103,42 @@ impl ScriptManager {
         return Ok(is_key_released(*keycode))
       }
       Ok(false)
+    })?)?;
+
+    env.set("mkeydown", lua.create_function(|_, key: i64| {
+      let button = match key {
+        0 => MouseButton::Left,
+        1 => MouseButton::Right,
+        2 => MouseButton::Middle,
+        _ => {
+          return Ok(false);
+        }
+      };
+      Ok(is_mouse_button_down(button))
+    })?)?;
+
+    env.set("mkeypressed", lua.create_function(|_, key: i64| {
+      let button = match key {
+        0 => MouseButton::Left,
+        1 => MouseButton::Right,
+        2 => MouseButton::Middle,
+        _ => {
+          return Ok(false);
+        }
+      };
+      Ok(is_mouse_button_pressed(button))
+    })?)?;
+
+    env.set("mkeyreleased", lua.create_function(|_, key: i64| {
+      let button = match key {
+        0 => MouseButton::Left,
+        1 => MouseButton::Right,
+        2 => MouseButton::Middle,
+        _ => {
+          return Ok(false);
+        }
+      };
+      Ok(is_mouse_button_released(button))
     })?)?;
 
     Ok(env)
