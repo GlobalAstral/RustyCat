@@ -4,7 +4,7 @@ use std::{error::Error, fs, path::PathBuf, str::FromStr};
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, prelude::warn, time::get_frame_time, window::{clear_background, next_frame}};
 use mlua::{Chunk, Function, Lua, MultiValue, Table, Value};
 
-use crate::core::{children_container::ChildrenContainer, color::Color, core::Luable, keys::Stringable, nodelike::NodeLike, script_manager::ScriptManager};
+use crate::core::{children_container::ChildrenContainer, color::Color, core::{Luable, init_env_commons}, keys::Stringable, nodelike::NodeLike, nodes::node::Node, script_manager::ScriptManager};
 
 pub struct Engine {
   pub bg_color: Color,
@@ -27,80 +27,8 @@ impl Engine {
   }
 
   fn init_env(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
-    env.set("print", lua.create_function(|_, mut args: MultiValue| {
-      let mut default_sep = ", ".to_string();
-      if let Some(Value::String(s)) = args.iter().last() {
-        let s = s.to_str()?;
-        if s.starts_with("sep=") {
-          default_sep = s[4..].to_string();
-          args.pop_back();
-        }
-      }
-      let parts: Vec<String> = args.iter().map(|ele| {ScriptManager::stringify(ele, 0)}).collect();
-      println!("{}", parts.join(&default_sep));
-      Ok(())
-    })?)?;
-
-    env.set("keydown", lua.create_function(|_, key: String| {
-      let code: Option<Box<KeyCode>> = KeyCode::from_string(&key);
-      if let Some(keycode) = code {
-        return Ok(is_key_down(*keycode))
-      }
-      Ok(false)
-    })?)?;
-
-    env.set("keypressed", lua.create_function(|_, key: String| {
-      let code: Option<Box<KeyCode>> = KeyCode::from_string(&key);
-      if let Some(keycode) = code {
-        return Ok(is_key_pressed(*keycode))
-      }
-      Ok(false)
-    })?)?;
-
-    env.set("keyreleased", lua.create_function(|_, key: String| {
-      let code: Option<Box<KeyCode>> = KeyCode::from_string(&key);
-      if let Some(keycode) = code {
-        return Ok(is_key_released(*keycode))
-      }
-      Ok(false)
-    })?)?;
-
-    env.set("mkeydown", lua.create_function(|_, key: i64| {
-      let button = match key {
-        0 => MouseButton::Left,
-        1 => MouseButton::Right,
-        2 => MouseButton::Middle,
-        _ => {
-          return Ok(false);
-        }
-      };
-      Ok(is_mouse_button_down(button))
-    })?)?;
-
-    env.set("mkeypressed", lua.create_function(|_, key: i64| {
-      let button = match key {
-        0 => MouseButton::Left,
-        1 => MouseButton::Right,
-        2 => MouseButton::Middle,
-        _ => {
-          return Ok(false);
-        }
-      };
-      Ok(is_mouse_button_pressed(button))
-    })?)?;
-
-    env.set("mkeyreleased", lua.create_function(|_, key: i64| {
-      let button = match key {
-        0 => MouseButton::Left,
-        1 => MouseButton::Right,
-        2 => MouseButton::Middle,
-        _ => {
-          return Ok(false);
-        }
-      };
-      Ok(is_mouse_button_released(button))
-    })?)?;
-
+    
+    init_env_commons(lua, env)?;
     //TODO do more stuff
 
     Ok(())

@@ -3,7 +3,7 @@ use std::{error::Error, fs, path::PathBuf};
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, window::{screen_height, screen_width}};
 use mlua::{Chunk, Function, Lua, MultiValue, Table, Value};
 
-use crate::core::{core::Luable, keys::Stringable, vec2::Vec2};
+use crate::core::{core::{Luable, init_env_commons}, keys::Stringable, vec2::Vec2};
 
 pub struct ScriptManager {
   scripts: Vec<(String, Chunk<'static>, Table)>,
@@ -67,79 +67,7 @@ impl ScriptManager {
     env.set("this", this)?;
     self.load_persistrent(lua, &env)?;
 
-    env.set("print", lua.create_function(|_, mut args: MultiValue| {
-      let mut default_sep = ", ".to_string();
-      if let Some(Value::String(s)) = args.iter().last() {
-        let s = s.to_str()?;
-        if s.starts_with("sep=") {
-          default_sep = s[4..].to_string();
-          args.pop_back();
-        }
-      }
-      let parts: Vec<String> = args.iter().map(|ele| {ScriptManager::stringify(ele, 0)}).collect();
-      println!("{}", parts.join(&default_sep));
-      Ok(())
-    })?)?;
-
-    env.set("keydown", lua.create_function(|_, key: String| {
-      let code: Option<Box<KeyCode>> = KeyCode::from_string(&key);
-      if let Some(keycode) = code {
-        return Ok(is_key_down(*keycode))
-      }
-      Ok(false)
-    })?)?;
-
-    env.set("keypressed", lua.create_function(|_, key: String| {
-      let code: Option<Box<KeyCode>> = KeyCode::from_string(&key);
-      if let Some(keycode) = code {
-        return Ok(is_key_pressed(*keycode))
-      }
-      Ok(false)
-    })?)?;
-
-    env.set("keyreleased", lua.create_function(|_, key: String| {
-      let code: Option<Box<KeyCode>> = KeyCode::from_string(&key);
-      if let Some(keycode) = code {
-        return Ok(is_key_released(*keycode))
-      }
-      Ok(false)
-    })?)?;
-
-    env.set("mkeydown", lua.create_function(|_, key: i64| {
-      let button = match key {
-        0 => MouseButton::Left,
-        1 => MouseButton::Right,
-        2 => MouseButton::Middle,
-        _ => {
-          return Ok(false);
-        }
-      };
-      Ok(is_mouse_button_down(button))
-    })?)?;
-
-    env.set("mkeypressed", lua.create_function(|_, key: i64| {
-      let button = match key {
-        0 => MouseButton::Left,
-        1 => MouseButton::Right,
-        2 => MouseButton::Middle,
-        _ => {
-          return Ok(false);
-        }
-      };
-      Ok(is_mouse_button_pressed(button))
-    })?)?;
-
-    env.set("mkeyreleased", lua.create_function(|_, key: i64| {
-      let button = match key {
-        0 => MouseButton::Left,
-        1 => MouseButton::Right,
-        2 => MouseButton::Middle,
-        _ => {
-          return Ok(false);
-        }
-      };
-      Ok(is_mouse_button_released(button))
-    })?)?;
+    init_env_commons(lua, &env)?;
 
     Ok(env)
   }

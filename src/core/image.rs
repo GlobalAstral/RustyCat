@@ -43,6 +43,10 @@ impl Img {
     self.flip_y = y;
     self
   }
+  pub fn tint(mut self, col: Color) -> Self {
+    self.tint = col;
+    self
+  }
   pub fn render(&self, pos: Vec2, size: Vec2) {
     let tex: Texture2D = block_on(load_texture(&self.texture)).expect(&format!("Cannot load image '{}'", self.texture));
     draw_texture_ex(
