@@ -18,7 +18,7 @@ impl ScriptManager {
     }
   }
 
-  fn stringify(ele: &Value, depth: usize) -> String {
+  pub fn stringify(ele: &Value, depth: usize) -> String {
     match ele {
       Value::Boolean(b) => b.to_string(),
       Value::Integer(i) => i.to_string(),
