@@ -45,10 +45,12 @@ impl ScriptManager {
       Value::Other(_) => "<other>".to_string(),
       Value::Thread(_) => "<thread>".to_string(),
       Value::UserData(_) => "<userdata>".to_string(),
-      Value::Function(f) => format!("<function>({})", match f.info().name {
-        Some(n) => n,
-        _ => "anonymous".to_string()
-      }),
+      Value::Function(f) => {
+        let info = f.info();
+        let name = info.name.unwrap_or("<anonymous>".to_string());
+        let line = info.line_defined.map(|val| format!("{}", val)).unwrap_or("elsewhere".to_string());
+        format!("fn {}(any)<{}> -> any", name, line).to_string()
+      },
       Value::Table(t) => {
         let mut ret: String = String::new();
 
@@ -79,10 +81,31 @@ impl ScriptManager {
 
   pub fn create_environment(lua: &Lua, this: Value) -> Result<Table, Box<dyn Error>> {
     let env: Table = lua.create_table()?;
-    env.set("this", this)?;
+    let thistable = this.as_table().expect("Invalid Lua Value");
+    env.set("this", Value::Table(thistable.clone()))?;
     ScriptManager::load_persistrent(lua, &env)?;
 
     init_env_commons(lua, &env)?;
+
+    thistable.set("add_child", lua.create_function_mut(|_, (this, id, node): (Table, String, Table)| {
+      let later = node.clone();
+      
+      let children = match this.get::<Table>("base") {
+        Ok(base) => {
+          base.get::<Table>("children")?
+        },
+        Err(e) => match this.get::<Table>("children") {
+          Ok(tbl) => tbl,
+          Err(err) => {
+            return Err(mlua::Error::RuntimeError(format!("Seriously, dude. How did you even crash this?\n {}\n\n{}", e, err).into()))
+          }
+        }
+      };
+
+      children.set(id, node)?;
+      
+      Ok(later)
+    })?)?;
 
     Ok(env)
   }

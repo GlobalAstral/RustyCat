@@ -1,9 +1,9 @@
 use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf};
 
 use image::GenericImageView;
-use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::Conf};
+use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::Conf};
 use mlua::{AnyUserData, Chunk, Lua, MultiValue, Table, Value};
-use crate::core::{color::Color, image::Img, keys::Stringable, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 #[derive(Debug)]
 pub struct WindowConfig {
@@ -67,6 +67,34 @@ pub trait Luable {
 
 pub trait Downcastable {
   fn as_any(&mut self) -> &mut dyn Any;
+}
+
+pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, mlua::Error> {
+  Ok(match kind {
+    "Node" => {
+      let mut tmp: Node = Node::new();
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "RectMesh" => {
+      let mut tmp: RectMesh = RectMesh::new(Vec2::ZERO, Vec2::ZERO, Color::new(0));
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "ClickableArea" => {
+      let mut tmp: ClickableArea = ClickableArea::new(Vec2::ZERO, Vec2::ZERO);
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "Sprite" => {
+      let mut tmp: Sprite = Sprite::new(Vec2::ZERO, Vec2::ZERO, Img::new(""));
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    _ => {
+      return Err(mlua::Error::RuntimeError("Node not recognized".into()))
+    }
+  })
 }
 
 pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
@@ -262,6 +290,11 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     scripts.push(environment)?;
     
     Ok(later)
+  })?)?;
+
+  env.set("quit", lua.create_function(|_, ()| {
+    window::request_quit();
+    Ok(())
   })?)?;
 
   Ok(())

@@ -4,7 +4,7 @@ use std::{error::Error, fs, path::PathBuf, process::Child, str::FromStr};
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, prelude::warn, time::get_frame_time, window::{clear_background, next_frame}};
 use mlua::{Chunk, ExternalError, Function, Lua, MultiValue, Table, Value};
 
-use crate::core::{children_container::ChildrenContainer, color::Color, core::{Downcastable, Luable, init_env_commons}, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::ScriptManager, vec2::Vec2};
+use crate::core::{children_container::ChildrenContainer, color::Color, core::{Downcastable, Luable, call_constructor, init_env_commons}, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::ScriptManager, vec2::Vec2};
 
 pub struct Engine {
   pub bg_color: Color,
@@ -31,31 +31,7 @@ impl Engine {
       self.children.clear_children();
       new_children.for_each(|name: String, node: Table| {
         let kind: String = node.get::<Function>("kind")?.call::<String>(())?;
-        let gotten_node : Box<dyn NodeLike> = match kind.as_str() {
-          "Node" => {
-            let mut tmp: Node = Node::new();
-            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
-            Box::new(tmp)
-          },
-          "RectMesh" => {
-            let mut tmp: RectMesh = RectMesh::new(Vec2::ZERO, Vec2::ZERO, Color::new(0));
-            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
-            Box::new(tmp)
-          },
-          "ClickableArea" => {
-            let mut tmp: ClickableArea = ClickableArea::new(Vec2::ZERO, Vec2::ZERO);
-            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
-            Box::new(tmp)
-          },
-          "Sprite" => {
-            let mut tmp: Sprite = Sprite::new(Vec2::ZERO, Vec2::ZERO, Img::new(""));
-            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
-            Box::new(tmp)
-          },
-          _ => {
-            return Err(mlua::Error::RuntimeError("Node not recognized".into()))
-          }
-        };
+        let gotten_node : Box<dyn NodeLike> = call_constructor(&kind, Value::Table(node))?;
         self.children.add_child(name, gotten_node);
         Ok(())
       }).expect("Cannot iterate root children");
