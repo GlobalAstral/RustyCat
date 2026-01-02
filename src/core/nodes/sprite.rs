@@ -20,7 +20,8 @@ impl NodeLike for Sprite {
     self.base.get_scripts()
   }
   fn load_scripts(&mut self) {
-    self.base.load_scripts("Sprite");
+    let tmp = self.get_kind().to_string();
+    self.base.load_scripts(&tmp);
   }
   fn setup(&mut self) {
     self.base.setup();
@@ -32,6 +33,9 @@ impl NodeLike for Sprite {
     self.base.render();
     self.img.render(self.transform.pos, self.transform.size * self.transform.scale);
   }
+  fn get_kind(&self) -> &str {
+    "Sprite"
+  }
 }
 
 impl Luable for Sprite {
@@ -40,6 +44,7 @@ impl Luable for Sprite {
     table.set("base", self.base.as_lua(lua)?)?;
     table.set("transform", self.transform.as_lua(lua)?)?;
     table.set("img", self.img.as_lua(lua)?)?;
+    Node::add_kind_to_lua(self.get_kind().to_string(), &table, lua)?;
     Ok(Value::Table(table))
   }
 

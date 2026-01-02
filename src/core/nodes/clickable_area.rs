@@ -26,10 +26,14 @@ impl NodeLike for ClickableArea {
     self.base.get_scripts()
   }
   fn load_scripts(&mut self) {
-    self.base.load_scripts("ClickableArea");
+    let tmp = self.get_kind().to_string();
+    self.base.load_scripts(&tmp);
   }
   fn render(&mut self) {
     self.base.render();
+  }
+  fn get_kind(&self) -> &str {
+    "ClickableArea"
   }
 }
 
@@ -54,7 +58,7 @@ impl Luable for ClickableArea {
       };
       Ok(inside && pressed)
     })?)?;
-
+    Node::add_kind_to_lua(self.get_kind().to_string(), &tbl, lua)?;
     Ok(Value::Table(tbl))
   }
 

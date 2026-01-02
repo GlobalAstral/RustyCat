@@ -1,8 +1,7 @@
 use std::{any::Any, sync::atomic::{AtomicU64, Ordering}};
 
 
-use crate::core::{core::{Downcastable}, script_manager::ScriptManager};
-use crate::core::core::Luable;
+use crate::core::{core::{Downcastable, Luable}, script_manager::ScriptManager};
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -16,6 +15,7 @@ pub trait NodeLike: Downcastable + Luable {
   fn render(&mut self);
   fn load_scripts(&mut self);
   fn get_scripts(&mut self) -> &mut ScriptManager;
+  fn get_kind(&self) -> &str;
 }
 
 impl Downcastable for Box<dyn NodeLike> {

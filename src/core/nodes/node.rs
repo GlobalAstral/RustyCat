@@ -33,6 +33,12 @@ impl Node {
   pub fn load_scripts(&mut self, node_name: &str) {
     self.scripts.loadScripts().expect(&format!("Cannot load scripts for {}<{}>", node_name, self.id));
   }
+  pub fn add_kind_to_lua(kind: String, env: &Table, lua: &Lua) -> Result<(), Box<dyn Error>> {
+    env.set("kind", lua.create_function(move |_, ()| {
+      Ok(kind.clone())
+    })?)?;
+    Ok(())
+  }
 }
 
 impl NodeLike for Node {
@@ -46,11 +52,16 @@ impl NodeLike for Node {
     self.update_children(deltatime);
   }
   fn load_scripts(&mut self) {
-    self.load_scripts("Node");
+    let tmp = self.get_kind().to_string();
+    self.load_scripts(&tmp);
   }
   fn get_scripts(&mut self) -> &mut ScriptManager {
     &mut self.scripts
   }
+  fn get_kind(&self) -> &str {
+    "Node"
+  }
+
 }
 
 impl Luable for Node {
@@ -67,6 +78,8 @@ impl Luable for Node {
     table.set("id", lua.create_function(move |_, ()| {
       Ok(id)
     })?)?;
+    table.set("scripts", self.scripts.as_lua(lua)?)?;
+    Node::add_kind_to_lua(self.get_kind().to_string(), &table, lua)?;
 
     Ok(Value::Table(table))
   }
@@ -87,6 +100,8 @@ impl Luable for Node {
         let pair = pairs.iter().nth(i as usize).unwrap();
         self.children.children.get_mut(&pair.0).unwrap().from_lua(pair.1.clone())?;
       }
+
+      self.scripts.from_lua(tbl.get("scripts")?)?;
 
       return Ok(())
     }

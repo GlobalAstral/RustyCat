@@ -1,10 +1,10 @@
 
-use std::{error::Error, fs, path::PathBuf, str::FromStr};
+use std::{error::Error, fs, path::PathBuf, process::Child, str::FromStr};
 
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, prelude::warn, time::get_frame_time, window::{clear_background, next_frame}};
-use mlua::{Chunk, Function, Lua, MultiValue, Table, Value};
+use mlua::{Chunk, ExternalError, Function, Lua, MultiValue, Table, Value};
 
-use crate::core::{children_container::ChildrenContainer, color::Color, core::{Luable, init_env_commons}, keys::Stringable, nodelike::NodeLike, nodes::node::Node, script_manager::ScriptManager};
+use crate::core::{children_container::ChildrenContainer, color::Color, core::{Downcastable, Luable, init_env_commons}, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::ScriptManager, vec2::Vec2};
 
 pub struct Engine {
   pub bg_color: Color,
@@ -26,10 +26,55 @@ impl Engine {
     }
   }
 
+  fn load_children(&mut self) {
+    let new_children: Table = self.environment.get("root").expect("Cannot update properties of 'root'");
+      self.children.clear_children();
+      new_children.for_each(|name: String, node: Table| {
+        let kind: String = node.get::<Function>("kind")?.call::<String>(())?;
+        let gotten_node : Box<dyn NodeLike> = match kind.as_str() {
+          "Node" => {
+            let mut tmp: Node = Node::new();
+            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
+            Box::new(tmp)
+          },
+          "RectMesh" => {
+            let mut tmp: RectMesh = RectMesh::new(Vec2::ZERO, Vec2::ZERO, Color::new(0));
+            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
+            Box::new(tmp)
+          },
+          "ClickableArea" => {
+            let mut tmp: ClickableArea = ClickableArea::new(Vec2::ZERO, Vec2::ZERO);
+            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
+            Box::new(tmp)
+          },
+          "Sprite" => {
+            let mut tmp: Sprite = Sprite::new(Vec2::ZERO, Vec2::ZERO, Img::new(""));
+            tmp.from_lua(Value::Table(node)).expect("Invalid Lua Value");
+            Box::new(tmp)
+          },
+          _ => {
+            return Err(mlua::Error::RuntimeError("Node not recognized".into()))
+          }
+        };
+        self.children.add_child(name, gotten_node);
+        Ok(())
+      }).expect("Cannot iterate root children");
+  }
+
   fn init_env(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
-    
     init_env_commons(lua, env)?;
-    //TODO do more stuff
+
+    env.set("root", Value::Table(lua.create_table()?))?;
+
+    let environment = env.clone();
+    env.set("add_node", lua.create_function_mut(move |this, (name, node): (String, Table)| {
+      let later = node.clone();
+      
+      let root: Table = environment.get("root")?;
+      root.set(name, node)?;
+
+      Ok(later)
+    })?)?;
 
     Ok(())
   } 
@@ -65,6 +110,9 @@ impl Engine {
     self.children.foreach_child(|_, _ , child| {
       child.load_scripts();
     });
+
+    self.load_children();
+
     self.children.foreach_child(|_, _ , child| {
         child.setup();
         let tmp= child.get_scripts().run_4all_envs(&self.lua, "Setup".into(), MultiValue::new());
@@ -95,7 +143,7 @@ impl Engine {
           let tmp: Result<Option<Table>, Box<dyn Error>>  = child.get_scripts().run_4all_envs(&lua_temp, "Loop".into(), MultiValue::from_vec(vec![Value::Number(dt as f64)]));
           if tmp.is_err() {
             warn!("Error during loop in script");
-            println!("ERROR: {}", tmp.err().unwrap());
+            eprintln!("ERROR: {}", tmp.err().unwrap());
           } else {
             let tmp: Option<Table> = tmp.unwrap();
             if let Some(this) = tmp {
@@ -104,6 +152,8 @@ impl Engine {
           }
         });
       self.lua = lua_temp;
+
+      self.load_children();
 
       clear_background(self.bg_color.into());
       self.children.foreach_child(|_, _ , child| {

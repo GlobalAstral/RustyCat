@@ -6,7 +6,7 @@ use crate::core::{color::Color, core::{Luable, radians}, vec2::Vec2};
 
 
 pub struct Img {
-  texture: String,
+  texture: Texture2D,
   rotation: f32,
   src: Option<Vec2>,
   tint: Color,
@@ -17,7 +17,7 @@ pub struct Img {
 impl Img {
   pub fn new(path: &str) -> Img {
     Img { 
-      texture: path.to_string(), 
+      texture: block_on(load_texture(path)).expect(&format!("Cannot load texture {}", path)), 
       rotation: 0.0, 
       src: None,
       tint: Color::new(0xffffffff),
@@ -48,9 +48,8 @@ impl Img {
     self
   }
   pub fn render(&self, pos: Vec2, size: Vec2) {
-    let tex: Texture2D = block_on(load_texture(&self.texture)).expect(&format!("Cannot load image '{}'", self.texture));
     draw_texture_ex(
-      &tex, 
+      &self.texture, 
       pos.get_x() as f32, 
       pos.get_y() as f32, 
       self.tint.into(), 
@@ -72,7 +71,6 @@ impl Img {
 impl Luable for Img {
   fn as_lua(&mut self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
     let table: mlua::Table = lua.create_table()?;
-    table.set("texture", self.texture.clone())?;
     table.set("rotation", self.rotation)?;
     table.set("src", match self.src {
       Some(mut vec) => vec.as_lua(lua)?,
@@ -86,7 +84,6 @@ impl Luable for Img {
 
   fn from_lua(&mut self, value: Value) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(table) = value.as_table() {
-      self.texture = table.get::<String>("texture")?;
       self.rotation = table.get("rotation")?;
       self.src = match table.get::<Value>("src")? {
         Value::Table(tbl) => {

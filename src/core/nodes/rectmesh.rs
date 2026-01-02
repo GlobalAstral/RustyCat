@@ -29,10 +29,14 @@ impl NodeLike for RectMesh {
     self.base.update(deltatime);
   }
   fn load_scripts(&mut self) {
-    self.base.load_scripts("RectMesh");
+    let tmp = self.get_kind().to_string();
+    self.base.load_scripts(&tmp);
   }
   fn get_scripts(&mut self) -> &mut ScriptManager {
     self.base.get_scripts()
+  }
+  fn get_kind(&self) -> &str {
+    "RectMesh"
   }
 }
 
@@ -53,6 +57,7 @@ impl Luable for RectMesh {
 
     let color = self.color.as_lua(lua)?;
     table.set("color", color)?;
+    Node::add_kind_to_lua(self.get_kind().to_string(), &table, lua)?;
 
     Ok(Value::Table(table))
   }

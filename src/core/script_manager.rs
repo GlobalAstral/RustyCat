@@ -1,9 +1,21 @@
 use std::{error::Error, fs, path::PathBuf};
 
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, window::{screen_height, screen_width}};
-use mlua::{Chunk, Function, Lua, MultiValue, Table, Value};
+use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, UserData, UserDataMetatable, Value};
 
 use crate::core::{core::{Luable, init_env_commons}, keys::Stringable, vec2::Vec2};
+
+const MAX_STRINGIFY_DEPTH: usize = 64;
+
+pub struct ScriptManagerSecret(Table);
+
+impl UserData for ScriptManagerSecret { }
+
+impl ScriptManagerSecret {
+  pub fn from_userdata(userdata: AnyUserData) -> Result<Table, Box<dyn Error>> {
+    Ok(userdata.borrow::<ScriptManagerSecret>()?.0.clone())
+  }
+}
 
 pub struct ScriptManager {
   scripts: Vec<(String, Chunk<'static>, Table)>,
@@ -19,6 +31,9 @@ impl ScriptManager {
   }
 
   pub fn stringify(ele: &Value, depth: usize) -> String {
+    if depth >= MAX_STRINGIFY_DEPTH {
+      return "<max depth reached>".to_string()
+    }
     match ele {
       Value::Boolean(b) => b.to_string(),
       Value::Integer(i) => i.to_string(),
@@ -51,7 +66,7 @@ impl ScriptManager {
     }
   }
 
-  fn load_persistrent(&self, lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
+  fn load_persistrent(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     env.set("window_width", screen_width())?;
     env.set("window_height", screen_height())?;
     let mut tmp: Vec2 = {
@@ -62,10 +77,10 @@ impl ScriptManager {
     Ok(())
   }
 
-  fn create_environment(&self, lua: &Lua, this: Value) -> Result<Table, Box<dyn Error>> {
+  pub fn create_environment(lua: &Lua, this: Value) -> Result<Table, Box<dyn Error>> {
     let env: Table = lua.create_table()?;
     env.set("this", this)?;
-    self.load_persistrent(lua, &env)?;
+    ScriptManager::load_persistrent(lua, &env)?;
 
     init_env_commons(lua, &env)?;
 
@@ -78,7 +93,7 @@ impl ScriptManager {
     let src: String = fs::read_to_string(path)?;
     let fname: String = filename.to_string();
     let chunk: Chunk<'_> = lua.load(src);
-    let env = self.create_environment(lua, this)?;
+    let env = ScriptManager::create_environment(lua, this)?;
     self.scripts.push((fname, chunk, env));
     Ok(())
   }
@@ -103,7 +118,7 @@ impl ScriptManager {
     }
     let envs: &Vec<Table> = self.environments.as_ref().unwrap();
     for env in envs {
-      self.load_persistrent(lua, env)?;
+      ScriptManager::load_persistrent(lua, env)?;
       let func: Function = env.get(func_name.clone())?;
       let _: Value = func.call(args.clone())?;
     }
@@ -115,5 +130,36 @@ impl ScriptManager {
     let ret = ret.unwrap();
     let tbl: Table = ret.get("this")?;
     Ok(Some(tbl))
+  }
+}
+
+impl Luable for ScriptManager {
+  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
+    let table = lua.create_table()?;
+    if self.environments.is_none() {
+      let tmp = lua.create_userdata(ScriptManagerSecret(table))?;
+      return Ok(Value::UserData(tmp));
+    }
+    let envs = self.environments.clone().unwrap();
+    for (i, env) in envs.iter().enumerate() {
+      table.set(i, Value::Table(env.clone()))?;
+    }
+    let userdata = lua.create_userdata(ScriptManagerSecret(table))?;
+    Ok(Value::UserData(userdata))
+  }
+
+  fn from_lua(&mut self, value: Value) -> Result<(), Box<dyn Error>> {
+    
+    if let Some(userdata) = value.as_userdata() {
+      let table: Table = userdata.borrow::<ScriptManagerSecret>()?.0.clone();
+      let mut temp: Vec<Table> = Vec::new();
+      table.for_each(|_: u64, env: Table| {
+        temp.push(env);
+        Ok(())
+      })?;
+      self.environments = Some(temp);
+      return Ok(())
+    }
+    Err("Invalid Lua Value".into())
   }
 }

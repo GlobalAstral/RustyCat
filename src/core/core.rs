@@ -2,8 +2,8 @@ use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf};
 
 use image::GenericImageView;
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::Conf};
-use mlua::{Chunk, Lua, MultiValue, Table, Value};
-use crate::core::{color::Color, image::Img, keys::Stringable, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::ScriptManager, transform::Transform, vec2::Vec2};
+use mlua::{AnyUserData, Chunk, Lua, MultiValue, Table, Value};
+use crate::core::{color::Color, image::Img, keys::Stringable, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 #[derive(Debug)]
 pub struct WindowConfig {
@@ -72,6 +72,7 @@ pub trait Downcastable {
 pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
   env.set("print", lua.create_function(|_, mut args: MultiValue| {
     let mut default_sep = ", ".to_string();
+    let mut default_end = "\n".to_string();
     if let Some(Value::String(s)) = args.iter().last() {
       let s = s.to_str()?;
       if s.starts_with("sep=") {
@@ -79,8 +80,16 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
         args.pop_back();
       }
     }
+
+    if let Some(Value::String(s)) = args.iter().last() {
+      let s = s.to_str()?;
+      if s.starts_with("end=") {
+        default_end = s[4..].to_string();
+        args.pop_back();
+      }
+    }
     let parts: Vec<String> = args.iter().map(|ele| {ScriptManager::stringify(ele, 0)}).collect();
-    println!("{}", parts.join(&default_sep));
+    print!("{}{}", parts.join(&default_sep), default_end);
     Ok(())
   })?)?;
 
@@ -226,6 +235,33 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     size.from_lua(Value::Table(sz)).expect("Invalid Lua Value");
     im.from_lua(Value::Table(img)).expect("Invalid Lua Value");
     Ok(Sprite::new(position, size, im).as_lua(this).expect("Cannot convert Sprite to Lua Value"))
+  })?)?;
+
+  env.set("embed", lua.create_function_mut(|this, (script, node): (String, Table)| {
+    let scripts: AnyUserData = match node.get::<Table>("base") {
+      Ok(tbl) => {
+        tbl.get::<AnyUserData>("scripts")?
+      },
+      Err(e) => match node.get::<AnyUserData>("scripts") {
+        Ok(tbl) => tbl,
+        Err(err) => {
+          return Err(mlua::Error::RuntimeError(format!("Seriously, dude. How did you even crash this?\n {}\n\n{}", e, err).into()))
+        }
+      }
+    };
+
+    let scripts: Table = ScriptManagerSecret::from_userdata(scripts).expect("Cannot get scripts");
+    
+    let later: Table = node.clone();
+    let environment: Table = ScriptManager::create_environment(this, Value::Table(node)).expect("Cannot create environment");
+        
+    this.load(fs::read_to_string(&script)?)
+    .set_environment(environment.clone())
+    .set_name(script)
+    .exec()?;
+    scripts.push(environment)?;
+    
+    Ok(later)
   })?)?;
 
   Ok(())
