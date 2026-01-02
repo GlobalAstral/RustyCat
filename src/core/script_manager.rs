@@ -87,7 +87,7 @@ impl ScriptManager {
 
     init_env_commons(lua, &env)?;
 
-    thistable.set("add_child", lua.create_function_mut(|_, (this, id, node): (Table, String, Table)| {
+    thistable.set("add_child", lua.create_function(|_, (this, id, node): (Table, String, Table)| {
       let later = node.clone();
       
       let children = match this.get::<Table>("base") {
@@ -105,6 +105,38 @@ impl ScriptManager {
       children.set(id, node)?;
       
       Ok(later)
+    })?)?;
+
+    thistable.set("clear_children", lua.create_function(|_, this: Table| {
+      let children = match this.get::<Table>("base") {
+        Ok(base) => {
+          base.get::<Table>("children")?
+        },
+        Err(e) => match this.get::<Table>("children") {
+          Ok(tbl) => tbl,
+          Err(err) => {
+            return Err(mlua::Error::RuntimeError(format!("Seriously, dude. How did you even crash this?\n {}\n\n{}", e, err).into()))
+          }
+        }
+      };
+      children.clear()?;
+      Ok(())
+    })?)?;
+
+    thistable.set("remove_child", lua.create_function(|_, (this, id): (Table, String)| {
+      let children = match this.get::<Table>("base") {
+        Ok(base) => {
+          base.get::<Table>("children")?
+        },
+        Err(e) => match this.get::<Table>("children") {
+          Ok(tbl) => tbl,
+          Err(err) => {
+            return Err(mlua::Error::RuntimeError(format!("Seriously, dude. How did you even crash this?\n {}\n\n{}", e, err).into()))
+          }
+        }
+      };
+      children.set(id, Value::Nil)?;
+      Ok(())
     })?)?;
 
     Ok(env)

@@ -200,6 +200,10 @@ impl Luable for Vec2 {
     let table: Table = lua.create_table()?;
     table.set("x", Value::Integer(self.get_x() as i64))?;
     table.set("y", Value::Integer(self.get_y() as i64))?;
+    table.set("dot", lua.create_function(|_, (this, other): (Table, Table)| {
+      let ret: i64 = this.get::<i64>("x")? * other.get::<i64>("x")? + this.get::<i64>("y")? * other.get::<i64>("y")?;
+      Ok(Value::Integer(ret))
+    })?)?;
     Ok(Value::Table(table))
   }
 
