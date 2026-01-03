@@ -3,7 +3,7 @@ use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf};
 use image::GenericImageView;
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::Conf};
 use mlua::{AnyUserData, Chunk, Lua, MultiValue, Table, Value};
-use crate::core::{color::Color, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 #[derive(Debug)]
 pub struct WindowConfig {
@@ -88,6 +88,11 @@ pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, ml
     },
     "Sprite" => {
       let mut tmp: Sprite = Sprite::new(Vec2::ZERO, Vec2::ZERO, Img::new(""));
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "Text" => {
+      let mut tmp: Text = Text::new("", Vec2::ZERO, 0, Color::new(0));
       tmp.from_lua(node).expect("Invalid Lua Value");
       Box::new(tmp)
     },
@@ -263,6 +268,16 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     size.from_lua(Value::Table(sz)).expect("Invalid Lua Value");
     im.from_lua(Value::Table(img)).expect("Invalid Lua Value");
     Ok(Sprite::new(position, size, im).as_lua(this).expect("Cannot convert Sprite to Lua Value"))
+  })?)?;
+
+  env.set("Text", lua.create_function(|this, (text, pos, size, col): (String, Table, u16, Table)| {
+    let mut position: Vec2 = Vec2::ZERO.clone();
+    position.from_lua(Value::Table(pos)).expect("Invalid Lua Value");
+
+    let mut color: Color = Color::new(0);
+    color.from_lua(Value::Table(col)).expect("Invalid Lua Value");
+
+    Ok(Text::new(&text, position, size, color).as_lua(this).expect("Cannot convert Text to Lua Value"))
   })?)?;
 
   env.set("embed", lua.create_function_mut(|this, (script, node): (String, Table)| {

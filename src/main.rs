@@ -8,7 +8,7 @@ use crate::core::{color::Color, core::WindowConfig, engine::Engine, nodes::{clic
 mod core;
 
 //? IDK HOW TO CHANGE ICON!!
-//TODO Text, Sound, Button and maybe more Nodes that idk rn
+//TODO SoundPlayer, Button and maybe more Nodes that idk rn
 
 fn get_conf() -> Conf { 
   let args: Vec<String> = env::args().collect();
