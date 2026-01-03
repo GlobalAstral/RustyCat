@@ -47,9 +47,9 @@ impl Engine {
   }
 
   fn init_env(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
-    init_env_commons(lua, env)?;
-
     env.set("root", Value::Table(lua.create_table()?))?;
+    
+    init_env_commons(lua, env)?;
 
     let environment = env.clone();
     env.set("add_node", lua.create_function_mut(move |this, (name, node): (String, Table)| {

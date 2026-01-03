@@ -1,9 +1,8 @@
 use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf, sync::RwLockWriteGuard};
 
-use image::GenericImageView;
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::{Conf, screen_height, screen_width}};
 use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, Value};
-use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, soundplayer::SoundPlayer, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 #[derive(Debug)]
 pub struct WindowConfig {
@@ -98,6 +97,11 @@ pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, ml
     },
     "Camera" => {
       let mut tmp: Camera = Camera::new(Vec2::ZERO, Vec2::ZERO, 0.0);
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "SoundPlayer" => {
+      let mut tmp: SoundPlayer = SoundPlayer::empty();
       tmp.from_lua(node).expect("Invalid Lua Value");
       Box::new(tmp)
     }
@@ -302,6 +306,10 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     let mut size: Vec2 = Vec2::ZERO.clone();
     size.from_lua(Value::Table(surface)).expect("Invalid Lua Value");
     Ok(Camera::new(position, size, focal_length).as_lua(this).expect("Cannot convert Camera to Lua Value"))
+  })?)?;
+
+  env.set("SoundPlayer", lua.create_function(|this, sound: String| {
+    Ok(SoundPlayer::new(&sound).as_lua(this).expect("Cannot convert SoundPlayer to Lua Value"))
   })?)?;
 
   env.set("embed", lua.create_function_mut(|this, (script, node): (String, Table)| {
