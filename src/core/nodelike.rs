@@ -9,7 +9,7 @@ pub fn generate_id() -> u64 {
   NEXT_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-pub trait NodeLike: Downcastable + Luable {
+pub trait NodeLike: Downcastable + Luable + Send + Sync {
   fn setup(&mut self);
   fn update(&mut self, deltatime: f32);
   fn render(&mut self);
@@ -18,7 +18,7 @@ pub trait NodeLike: Downcastable + Luable {
   fn get_kind(&self) -> &str;
 }
 
-impl Downcastable for Box<dyn NodeLike> {
+impl Downcastable for Box<dyn NodeLike + Send + Sync> {
   fn as_any(&mut self) -> &mut dyn Any {
     self.as_mut().as_any()
   }

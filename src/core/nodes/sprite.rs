@@ -1,6 +1,6 @@
 use mlua::Value;
 
-use crate::core::{core::{Downcastable, Luable}, image::Img, nodelike::NodeLike, nodes::node::Node, transform::Transform, vec2::Vec2};
+use crate::core::{core::{Downcastable, Luable}, engine::main_camera, image::Img, nodelike::NodeLike, nodes::node::Node, transform::Transform, vec2::Vec2};
 
 
 pub struct Sprite {
@@ -31,7 +31,8 @@ impl NodeLike for Sprite {
   }
   fn render(&mut self) {
     self.base.render();
-    self.img.render(self.transform.pos, self.transform.size * self.transform.scale);
+    let (actual_position, actual_size): (Vec2, Vec2) = self.transform.get_camera_relative();
+    self.img.render(actual_position, actual_size);
   }
   fn get_kind(&self) -> &str {
     "Sprite"

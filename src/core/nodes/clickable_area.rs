@@ -1,7 +1,9 @@
-use macroquad::input::mouse_position;
+use std::sync::Arc;
+
+use macroquad::{input::mouse_position, math::Rect};
 use mlua::Value;
 
-use crate::core::{core::{Downcastable, Luable}, nodelike::NodeLike, nodes::node::Node, script_manager::ScriptManager, transform::Transform, vec2::Vec2};
+use crate::core::{core::{Downcastable, Luable}, engine::{MAIN_CAMERA, main_camera}, nodelike::NodeLike, nodes::node::Node, script_manager::ScriptManager, transform::Transform, vec2::Vec2};
 
 
 pub struct ClickableArea {
@@ -45,7 +47,11 @@ impl Luable for ClickableArea {
 
     tbl.set("base", base)?;
     tbl.set("transform", transform)?;
-    let temp = self.transform.clone();
+    
+    let temp = {
+      let (actual_position, actual_size) = self.transform.get_camera_relative();
+      Transform::new(actual_position, actual_size)
+    };
     tbl.set("clicked", lua.create_function(move |_, s: i64| {
       let (x, y) = mouse_position();
       let mouse = Vec2::new(x as i32, y as i32);

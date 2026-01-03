@@ -6,7 +6,7 @@ use crate::core::{children_container::ChildrenContainer, core::{Downcastable, Lu
 
 pub struct Node {
   id: u64,
-  children: ChildrenContainer<String, Box<dyn NodeLike>>,
+  children: ChildrenContainer<String, Box<dyn NodeLike + Send + Sync>>,
   scripts: ScriptManager
 }
 

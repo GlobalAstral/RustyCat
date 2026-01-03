@@ -1,9 +1,9 @@
-use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf};
+use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf, sync::RwLockWriteGuard};
 
 use image::GenericImageView;
-use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::Conf};
-use mlua::{AnyUserData, Chunk, Lua, MultiValue, Table, Value};
-use crate::core::{color::Color, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::{Conf, screen_height, screen_width}};
+use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, Value};
+use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 #[derive(Debug)]
 pub struct WindowConfig {
@@ -96,10 +96,26 @@ pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, ml
       tmp.from_lua(node).expect("Invalid Lua Value");
       Box::new(tmp)
     },
+    "Camera" => {
+      let mut tmp: Camera = Camera::new(Vec2::ZERO, Vec2::ZERO, 0.0);
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    }
     _ => {
       return Err(mlua::Error::RuntimeError("Node not recognized".into()))
     }
   })
+}
+
+pub fn load_persistrent(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
+  env.set("window_width", screen_width())?;
+  env.set("window_height", screen_height())?;
+  let mut tmp: Vec2 = {
+    let (mx, my) = mouse_position();
+    Vec2::new(mx as i32, my as i32)
+  };
+  env.set("mouse_pos", tmp.as_lua(lua)?)?;
+  Ok(())
 }
 
 pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
@@ -280,6 +296,14 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     Ok(Text::new(&text, position, size, color).as_lua(this).expect("Cannot convert Text to Lua Value"))
   })?)?;
 
+  env.set("Camera", lua.create_function(|this, (pos, surface, focal_length): (Table, Table, f32)| {
+    let mut position: Vec2 = Vec2::ZERO.clone();
+    position.from_lua(Value::Table(pos)).expect("Invalid Lua Value");
+    let mut size: Vec2 = Vec2::ZERO.clone();
+    size.from_lua(Value::Table(surface)).expect("Invalid Lua Value");
+    Ok(Camera::new(position, size, focal_length).as_lua(this).expect("Cannot convert Camera to Lua Value"))
+  })?)?;
+
   env.set("embed", lua.create_function_mut(|this, (script, node): (String, Table)| {
     let scripts: AnyUserData = match node.get::<Table>("base") {
       Ok(tbl) => {
@@ -309,6 +333,25 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
 
   env.set("quit", lua.create_function(|_, ()| {
     window::request_quit();
+    Ok(())
+  })?)?;
+
+  env.set("use_camera", lua.create_function(|_, camera: Table| {
+    let mut cam = Camera::new(Vec2::ZERO, Vec2::ZERO, 0.0);
+    cam.from_lua(Value::Table(camera)).expect("Invalid given camera");
+    MAIN_CAMERA.write().unwrap().replace(cam);
+    Ok(())
+  })?)?;
+
+  env.set("with_camera", lua.create_function(|this, func: Function| {
+    let mut cam: Camera = {
+      let mut guard = MAIN_CAMERA.write().unwrap();
+      guard.take().ok_or_else(|| {mlua::Error::RuntimeError("Main Camera is not set. No camera to work on.".to_string())})?
+    };
+    let value: Value = cam.as_lua(this).map_err(|_| mlua::Error::RuntimeError("Cannot convert Camera to Lua".into()))?;
+    let returned: Table = func.call::<Table>(value)?;
+    cam.from_lua(Value::Table(returned)).map_err(|_| mlua::Error::RuntimeError("Cannot convert Lua back to Camera".into()))?;
+    MAIN_CAMERA.write().unwrap().replace(cam);
     Ok(())
   })?)?;
 

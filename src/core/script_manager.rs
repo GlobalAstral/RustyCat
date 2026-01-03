@@ -3,7 +3,7 @@ use std::{error::Error, fs, path::PathBuf};
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, window::{screen_height, screen_width}};
 use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, UserData, UserDataMetatable, Value};
 
-use crate::core::{core::{Luable, init_env_commons}, keys::Stringable, vec2::Vec2};
+use crate::core::{core::{Luable, init_env_commons, load_persistrent}, engine::Engine, keys::Stringable, vec2::Vec2};
 
 const MAX_STRINGIFY_DEPTH: usize = 64;
 
@@ -68,22 +68,11 @@ impl ScriptManager {
     }
   }
 
-  fn load_persistrent(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
-    env.set("window_width", screen_width())?;
-    env.set("window_height", screen_height())?;
-    let mut tmp: Vec2 = {
-      let (mx, my) = mouse_position();
-      Vec2::new(mx as i32, my as i32)
-    };
-    env.set("mouse_pos", tmp.as_lua(lua)?)?;
-    Ok(())
-  }
-
   pub fn create_environment(lua: &Lua, this: Value) -> Result<Table, Box<dyn Error>> {
     let env: Table = lua.create_table()?;
     let thistable = this.as_table().expect("Invalid Lua Value");
     env.set("this", Value::Table(thistable.clone()))?;
-    ScriptManager::load_persistrent(lua, &env)?;
+    load_persistrent(lua, &env)?;
 
     init_env_commons(lua, &env)?;
 
@@ -173,7 +162,7 @@ impl ScriptManager {
     }
     let envs: &Vec<Table> = self.environments.as_ref().unwrap();
     for env in envs {
-      ScriptManager::load_persistrent(lua, env)?;
+      load_persistrent(lua, env)?;
       let func: Function = env.get(func_name.clone())?;
       let _: Value = func.call(args.clone())?;
     }

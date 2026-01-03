@@ -2,7 +2,7 @@ use futures::executor::block_on;
 use macroquad::text::{Font, TextDimensions, TextParams, draw_text_ex, load_ttf_font, measure_text};
 use mlua::{AnyUserData, IntoLua, Table, UserData, Value};
 
-use crate::core::{color::Color, core::{Downcastable, Luable}, nodelike::NodeLike, nodes::node::Node, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, core::{Downcastable, Luable}, engine::main_camera, nodelike::NodeLike, nodes::node::Node, transform::Transform, vec2::Vec2};
 
 pub struct Text {
   base: Node,
@@ -60,6 +60,12 @@ impl NodeLike for Text {
   fn render(&mut self) {
     self.base.render();
 
+    let scale = if let Some(cam) = main_camera().as_ref() {
+      self.scale / cam.focal_length
+    } else {
+      self.scale
+    };
+
     draw_text_ex(
       &self.text, 
       self.pos.get_x() as f32, 
@@ -70,7 +76,7 @@ impl NodeLike for Text {
           Some(tmp)
         } else { None }, 
         font_size: self.font_size, 
-        font_scale: self.scale, 
+        font_scale: scale, 
         font_scale_aspect: self.aspect, 
         rotation: self.rotation, 
         color: self.color.into()

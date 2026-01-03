@@ -3,7 +3,7 @@ use std::error::Error;
 use macroquad::math::Rect;
 use mlua::{Lua, Table, Value};
 
-use crate::core::{core::Luable, vec2::Vec2};
+use crate::core::{core::Luable, engine::main_camera, vec2::Vec2};
 
 #[derive(Clone)]
 pub struct Transform {
@@ -30,6 +30,15 @@ impl Transform {
     let a = Rect::new(self.pos.get_x() as f32, self.pos.get_y() as f32, actual_size.get_x() as f32, actual_size.get_y() as f32);
     let tmp = macroquad::math::Vec2::new(pos.get_x() as f32, pos.get_y() as f32);
     a.contains(tmp)
+  }
+
+  pub fn get_camera_relative(&self) -> (Vec2, Vec2) {
+    let (actual_position, actual_size): (Vec2, Vec2) = if let Some(cam) = main_camera().as_ref() {
+      (self.pos - cam.transform.pos, self.size * self.scale / cam.focal_length)
+    } else {
+      (self.pos, self.size * self.scale)
+    };
+    (actual_position, actual_size)
   }
 }
 

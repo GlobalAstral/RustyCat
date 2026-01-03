@@ -3,7 +3,7 @@ use std::{any::Any, error::Error};
 use macroquad::shapes::draw_rectangle;
 use mlua::{Lua, Value};
 
-use crate::core::{color::Color, core::{Downcastable, Luable}, nodelike::NodeLike, nodes::node::Node, script_manager::ScriptManager, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, core::{Downcastable, Luable}, engine::main_camera, nodelike::NodeLike, nodes::node::Node, script_manager::ScriptManager, transform::Transform, vec2::Vec2};
 
 pub struct RectMesh {
   base: Node,
@@ -20,7 +20,8 @@ impl RectMesh {
 impl NodeLike for RectMesh {
   fn render(&mut self) {
     self.base.render();
-    draw_rectangle(self.transform.pos.get_x() as f32, self.transform.pos.get_y() as f32, self.transform.size.get_x() as f32 * self.transform.scale, self.transform.size.get_y() as f32 * self.transform.scale, self.color.into());
+    let (actual_position, actual_size): (Vec2, Vec2) = self.transform.get_camera_relative();
+    draw_rectangle(actual_position.get_x() as f32, actual_position.get_y() as f32, actual_size.get_x() as f32, actual_size.get_y() as f32, self.color.into());
   }
   fn setup(&mut self) {
     self.base.setup();

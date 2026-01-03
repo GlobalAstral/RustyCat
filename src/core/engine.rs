@@ -1,14 +1,23 @@
 
-use std::{error::Error, fs, path::PathBuf, process::Child, str::FromStr};
+use std::{error::Error, fs, path::PathBuf, process::Child, str::FromStr, sync::{Arc, RwLock, RwLockReadGuard}};
 
+use lazy_static::lazy_static;
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released}, prelude::warn, time::get_frame_time, window::{clear_background, next_frame}};
 use mlua::{Chunk, ExternalError, Function, Lua, MultiValue, Table, Value};
 
-use crate::core::{children_container::ChildrenContainer, color::Color, core::{Downcastable, Luable, call_constructor, init_env_commons}, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::ScriptManager, vec2::Vec2};
+use crate::core::{children_container::ChildrenContainer, color::Color, core::{Downcastable, Luable, call_constructor, init_env_commons, load_persistrent}, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, sprite::Sprite}, script_manager::ScriptManager, vec2::Vec2};
+
+lazy_static! {
+  pub static ref MAIN_CAMERA: Arc<RwLock<Option<Camera>>> = Arc::new(RwLock::new(None));
+}
+
+pub fn main_camera<'a>() -> RwLockReadGuard<'a, Option<Camera>> {
+  MAIN_CAMERA.read().unwrap()
+}
 
 pub struct Engine {
   pub bg_color: Color,
-  pub children: ChildrenContainer<String, Box<dyn NodeLike>>,
+  pub children: ChildrenContainer<String, Box<dyn NodeLike + Send + Sync>>,
   
   environment: Table,
 
@@ -31,7 +40,7 @@ impl Engine {
       self.children.clear_children();
       new_children.for_each(|name: String, node: Table| {
         let kind: String = node.get::<Function>("kind")?.call::<String>(())?;
-        let gotten_node : Box<dyn NodeLike> = call_constructor(&kind, Value::Table(node))?;
+        let gotten_node : Box<dyn NodeLike + Send + Sync> = call_constructor(&kind, Value::Table(node))?;
         self.children.add_child(name, gotten_node);
         Ok(())
       }).expect("Cannot iterate root children");
@@ -77,6 +86,7 @@ impl Engine {
   }
 
   pub async fn mainloop(&mut self) {
+    load_persistrent(&self.lua, &self.environment).expect("Cannot load Persistent Data");
     if let Ok(func) = self.environment.get::<Function>("Setup") {
       func.call::<()>(()).expect("Error during Engine Setup");
     } else {
@@ -105,6 +115,7 @@ impl Engine {
     loop {
       let dt: f32 = get_frame_time();
 
+      load_persistrent(&self.lua, &self.environment).expect("Cannot load Persistent Data");
       if let Ok(func) = self.environment.get::<Function>("Loop") {
         func.call::<()>(dt).expect("Error during Engine Loop");
       } else {
