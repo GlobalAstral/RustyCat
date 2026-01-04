@@ -178,7 +178,7 @@ impl ScriptManager {
 }
 
 impl Luable for ScriptManager {
-  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
+  fn as_lua(&self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
     let table = lua.create_table()?;
     if self.environments.is_none() {
       let tmp = lua.create_userdata(ScriptManagerSecret(table))?;

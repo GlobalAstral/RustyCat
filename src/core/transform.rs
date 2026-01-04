@@ -43,7 +43,7 @@ impl Transform {
 }
 
 impl Luable for Transform {
-  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
+  fn as_lua(&self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
     let pos: Value = self.pos.as_lua(lua)?;    
     let size: Value = self.size.as_lua(lua)?;
     let table: Table = lua.create_table()?;

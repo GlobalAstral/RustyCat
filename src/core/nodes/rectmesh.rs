@@ -48,7 +48,7 @@ impl Downcastable for RectMesh {
 }
 
 impl Luable for RectMesh {
-  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
+  fn as_lua(&self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
     let table = lua.create_table()?;
     let base: Value = self.base.as_lua(lua)?;
     table.set("base", base)?;

@@ -69,11 +69,11 @@ impl Img {
 }
 
 impl Luable for Img {
-  fn as_lua(&mut self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
+  fn as_lua(&self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
     let table: mlua::Table = lua.create_table()?;
     table.set("rotation", self.rotation)?;
     table.set("src", match self.src {
-      Some(mut vec) => vec.as_lua(lua)?,
+      Some(vec) => vec.as_lua(lua)?,
       None => Value::Nil
     })?;
     table.set("tint", self.tint.as_lua(lua)?)?;

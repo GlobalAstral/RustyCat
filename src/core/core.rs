@@ -2,7 +2,7 @@ use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf, sync::RwLo
 
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::{Conf, screen_height, screen_width}};
 use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, Value};
-use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, node::Node, rectmesh::RectMesh, soundplayer::SoundPlayer, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, collider::Collider, node::Node, rectmesh::RectMesh, soundplayer::SoundPlayer, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 #[derive(Debug)]
 pub struct WindowConfig {
@@ -60,7 +60,7 @@ pub fn radians(degrees: f32) -> f32 {
 }
 
 pub trait Luable {
-  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>>;
+  fn as_lua(&self, lua: &Lua) -> Result<Value, Box<dyn Error>>;
   fn from_lua(&mut self, value: Value) -> Result<(), Box<dyn Error>>;
 }
 
@@ -69,7 +69,8 @@ pub trait Downcastable {
 }
 
 pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, mlua::Error> {
-  Ok(match kind {
+  Ok(
+    match kind {
     "Node" => {
       let mut tmp: Node = Node::new();
       tmp.from_lua(node).expect("Invalid Lua Value");
@@ -104,17 +105,23 @@ pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, ml
       let mut tmp: SoundPlayer = SoundPlayer::empty();
       tmp.from_lua(node).expect("Invalid Lua Value");
       Box::new(tmp)
-    }
+    },
+    "Collider" => {
+      let mut tmp: Collider = Collider::empty();
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
     _ => {
       return Err(mlua::Error::RuntimeError("Node not recognized".into()))
     }
-  })
+  }
+  )
 }
 
 pub fn load_persistrent(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
   env.set("window_width", screen_width())?;
   env.set("window_height", screen_height())?;
-  let mut tmp: Vec2 = {
+  let tmp: Vec2 = {
     let (mx, my) = mouse_position();
     Vec2::new(mx as i32, my as i32)
   };
@@ -239,22 +246,22 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
   })?)?;
 
   env.set("ColorRgba", lua.create_function(|this, (r, g, b, a) : (u8, u8, u8, u8)| {
-    let mut col = Color::from_rgba(r, g, b, a);
+    let col = Color::from_rgba(r, g, b, a);
     Ok(col.as_lua(this).expect("Cannot convert to Color"))
   })?)?;
 
   env.set("ColorRgb", lua.create_function(|this, (r, g, b) : (u8, u8, u8)| {
-    let mut col = Color::from_rgb(r, g, b);
+    let col = Color::from_rgb(r, g, b);
     Ok(col.as_lua(this).expect("Cannot convert to Color"))
   })?)?;
 
   env.set("Color", lua.create_function(|this, i: u32| {
-    let mut col = Color::new(i);
+    let col = Color::new(i);
     Ok(col.as_lua(this).expect("Cannot convert to Color"))
   })?)?;
 
   env.set("ColorHex", lua.create_function(|this, s: String| {
-    let mut col = Color::from_hex(&s);
+    let col = Color::from_hex(&s);
     Ok(col.as_lua(this).expect("Cannot convert to Color"))
   })?)?;
 
@@ -310,6 +317,16 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
 
   env.set("SoundPlayer", lua.create_function(|this, sound: String| {
     Ok(SoundPlayer::new(&sound).as_lua(this).expect("Cannot convert SoundPlayer to Lua Value"))
+  })?)?;
+
+  env.set("Collider", lua.create_function(|this, (pos, size, layer): (Table, Table, Option<String>)| {
+    let mut position = Vec2::ZERO.clone();
+    position.from_lua(Value::Table(pos)).expect("Cannot convert Lua Value to Vec2");
+    let mut sz = Vec2::ZERO.clone();
+    sz.from_lua(Value::Table(size)).expect("Cannot convert Lua Value to Vec2");
+    let collider = Collider::new(position, sz, layer.unwrap_or("everything".to_string()));
+    let val = collider.as_lua(this).expect("Cannot convert Collider to Lua Value");
+    Ok(val)
   })?)?;
 
   env.set("embed", lua.create_function_mut(|this, (script, node): (String, Table)| {

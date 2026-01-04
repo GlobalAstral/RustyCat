@@ -196,7 +196,7 @@ impl DivAssign<f32> for Vec2 {
 }
 
 impl Luable for Vec2 {
-  fn as_lua(&mut self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
+  fn as_lua(&self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
     let table: Table = lua.create_table()?;
     table.set("x", Value::Integer(self.get_x() as i64))?;
     table.set("y", Value::Integer(self.get_y() as i64))?;

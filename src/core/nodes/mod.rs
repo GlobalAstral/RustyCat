@@ -6,3 +6,4 @@ pub mod sprite;
 pub mod text;
 pub mod camera;
 pub mod soundplayer;
+pub mod collider;

@@ -105,7 +105,7 @@ impl Color {
 }
 
 impl Luable for Color {
-  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
+  fn as_lua(&self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
     let table = lua.create_table()?;
 
     table.set("r", Value::Integer(self.r as i64))?;

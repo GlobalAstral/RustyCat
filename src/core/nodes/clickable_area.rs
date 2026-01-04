@@ -40,7 +40,7 @@ impl NodeLike for ClickableArea {
 }
 
 impl Luable for ClickableArea {
-  fn as_lua(&mut self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
+  fn as_lua(&self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
     let tbl = lua.create_table()?;
     let base = self.base.as_lua(lua)?;
     let transform = self.transform.as_lua(lua)?;

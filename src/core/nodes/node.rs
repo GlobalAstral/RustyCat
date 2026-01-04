@@ -5,7 +5,7 @@ use mlua::{Lua, Table, Value};
 use crate::core::{children_container::ChildrenContainer, core::{Downcastable, Luable}, nodelike::{NodeLike, generate_id}, script_manager::ScriptManager};
 
 pub struct Node {
-  id: u64,
+  pub id: u64,
   children: ChildrenContainer<String, Box<dyn NodeLike + Send + Sync>>,
   scripts: ScriptManager
 }
@@ -65,11 +65,10 @@ impl NodeLike for Node {
 }
 
 impl Luable for Node {
-  fn as_lua(&mut self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
+  fn as_lua(&self, lua: &Lua) -> Result<Value, Box<dyn Error>> {
     let table = lua.create_table()?;
     let children: Table = lua.create_table()?;
-    let moved = std::mem::take(&mut self.children.children);
-    for (id, mut node) in moved {
+    for (id, node) in self.children.children.iter() {
       let tmp = node.as_lua(lua).unwrap();
       children.set(id.clone(), tmp)?;
     }

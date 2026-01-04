@@ -40,7 +40,7 @@ impl NodeLike for Sprite {
 }
 
 impl Luable for Sprite {
-  fn as_lua(&mut self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
+  fn as_lua(&self, lua: &mlua::Lua) -> Result<mlua::Value, Box<dyn std::error::Error>> {
     let table = lua.create_table()?;
     table.set("base", self.base.as_lua(lua)?)?;
     table.set("transform", self.transform.as_lua(lua)?)?;
