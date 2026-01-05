@@ -77,6 +77,7 @@ impl Luable for SoundPlayer {
   fn from_lua(&mut self, value: mlua::Value) -> Result<(), Box<dyn std::error::Error>> {
     let table = value.as_table().ok_or("Invalid Lua Value")?;
     self.base.from_lua(table.get("base")?)?;
+    self.sound = table.get("sound")?;
     Ok(())
   }
 }

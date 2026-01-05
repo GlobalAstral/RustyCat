@@ -21,7 +21,13 @@ impl NodeLike for RectMesh {
   fn render(&mut self) {
     self.base.render();
     let (actual_position, actual_size): (Vec2, Vec2) = self.transform.get_camera_relative();
-    draw_rectangle(actual_position.get_x() as f32, actual_position.get_y() as f32, actual_size.get_x() as f32, actual_size.get_y() as f32, self.color.into());
+    draw_rectangle(
+      actual_position.get_x() as f32, 
+      actual_position.get_y() as f32, 
+      actual_size.get_x() as f32, 
+      actual_size.get_y() as f32, 
+      self.color.into()
+    );
   }
   fn setup(&mut self) {
     self.base.setup();

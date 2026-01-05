@@ -1,8 +1,11 @@
 use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf, sync::RwLockWriteGuard};
 
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::{Conf, screen_height, screen_width}};
-use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, Value};
+use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, UserData, Value};
 use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, collider::Collider, node::Node, rectmesh::RectMesh, soundplayer::SoundPlayer, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+
+pub struct LuaTexture(pub Texture2D);
+impl UserData for LuaTexture {}
 
 #[derive(Debug)]
 pub struct WindowConfig {

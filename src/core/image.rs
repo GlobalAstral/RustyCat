@@ -1,8 +1,8 @@
 use futures::executor::block_on;
 use macroquad::{math::Rect, texture::{DrawTextureParams, Texture2D, draw_texture_ex, load_texture}};
-use mlua::Value;
+use mlua::{AnyUserData, Value};
 
-use crate::core::{color::Color, core::{Luable, radians}, vec2::Vec2};
+use crate::core::{color::Color, core::{LuaTexture, Luable, radians}, vec2::Vec2};
 
 
 pub struct Img {
@@ -22,7 +22,7 @@ impl Img {
       src: None,
       tint: Color::new(0xffffffff),
       flip_x: false,
-      flip_y: false
+      flip_y: false,
     }
   }
 
@@ -79,6 +79,7 @@ impl Luable for Img {
     table.set("tint", self.tint.as_lua(lua)?)?;
     table.set("flip_x", self.flip_x)?;
     table.set("flip_y", self.flip_y)?;
+    table.set("texture", lua.create_userdata(LuaTexture(self.texture.clone()))?)?;
     Ok(Value::Table(table))
   }
 
@@ -96,6 +97,8 @@ impl Luable for Img {
       self.tint.from_lua(table.get("tint")?)?;
       self.flip_x = table.get("flip_x")?;
       self.flip_y = table.get("flip_y")?;
+      let temp: AnyUserData = table.get("texture")?;
+      self.texture = temp.borrow::<LuaTexture>()?.0.clone();
       return Ok(())
     }
     Err("Invalid Lua Value".into())

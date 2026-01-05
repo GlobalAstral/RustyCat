@@ -33,6 +33,15 @@ impl Vec2 {
   pub fn get_y(&self) -> i32 {
     self.y
   }
+
+
+  pub fn get_fx(&self) -> f32 {
+    self.x as f32
+  }
+
+  pub fn get_fy(&self) -> f32 {
+    self.y as f32
+  }
 }
 
 impl Add for Vec2 {
@@ -192,6 +201,12 @@ impl MulAssign<f32> for Vec2 {
 impl DivAssign<f32> for Vec2 {
   fn div_assign(&mut self, rhs: f32) {
     *self = *self / rhs;   
+  }
+}
+
+impl Into<macroquad::math::Vec2> for Vec2 {
+  fn into(self) -> macroquad::math::Vec2 {
+    macroquad::math::Vec2 { x: self.x as f32, y: self.y as f32 }
   }
 }
 

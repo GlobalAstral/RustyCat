@@ -1,6 +1,5 @@
 use std::{any::Any, sync::atomic::{AtomicU64, Ordering}};
 
-
 use crate::core::{core::{Downcastable, Luable}, script_manager::ScriptManager};
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);

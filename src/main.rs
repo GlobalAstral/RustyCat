@@ -8,7 +8,7 @@ use crate::core::{color::Color, core::WindowConfig, engine::Engine, nodes::{clic
 mod core;
 
 //? IDK HOW TO CHANGE ICON!!
-//TODO Button, Tilemap, Animations, Physics Stuff, and maybe more Nodes that idk rn
+//TODO Button, Animations, Physics Stuff, and maybe more Nodes that idk rn
 
 fn get_conf() -> Conf { 
   let args: Vec<String> = env::args().collect();
