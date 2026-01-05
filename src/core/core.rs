@@ -2,7 +2,7 @@ use std::{any::Any, error::Error, f32::consts::PI, fs, path::PathBuf, sync::RwLo
 
 use macroquad::{input::{KeyCode, MouseButton, is_key_down, is_key_pressed, is_key_released, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position}, miniquad::window, texture::{DrawTextureParams, Image, Texture2D, load_texture}, window::{Conf, screen_height, screen_width}};
 use mlua::{AnyUserData, Chunk, Function, Lua, MultiValue, Table, UserData, Value};
-use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{camera::Camera, clickable_area::ClickableArea, collider::Collider, node::Node, rectmesh::RectMesh, soundplayer::SoundPlayer, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
+use crate::core::{color::Color, engine::MAIN_CAMERA, image::Img, keys::Stringable, nodelike::NodeLike, nodes::{button::{SpriteButton, TextButton}, camera::Camera, clickable_area::ClickableArea, collider::Collider, node::Node, rectmesh::RectMesh, soundplayer::SoundPlayer, sprite::Sprite, text::Text}, script_manager::{ScriptManager, ScriptManagerSecret}, transform::Transform, vec2::Vec2};
 
 pub struct LuaTexture(pub Texture2D);
 impl UserData for LuaTexture {}
@@ -111,6 +111,16 @@ pub fn call_constructor(kind: &str, node: Value) -> Result<Box<dyn NodeLike>, ml
     },
     "Collider" => {
       let mut tmp: Collider = Collider::empty();
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "TextButton" => {
+      let mut tmp: TextButton = TextButton::new("", Vec2::ZERO, 0, Color::new(0));
+      tmp.from_lua(node).expect("Invalid Lua Value");
+      Box::new(tmp)
+    },
+    "SpriteButton" => {
+      let mut tmp: Sprite = Sprite::new(Vec2::ZERO, Vec2::ZERO, Img::new(""));
       tmp.from_lua(node).expect("Invalid Lua Value");
       Box::new(tmp)
     },
@@ -330,6 +340,26 @@ pub fn init_env_commons(lua: &Lua, env: &Table) -> Result<(), Box<dyn Error>> {
     let collider = Collider::new(position, sz, layer.unwrap_or("everything".to_string()));
     let val = collider.as_lua(this).expect("Cannot convert Collider to Lua Value");
     Ok(val)
+  })?)?;
+
+  env.set("TextButton", lua.create_function(|this, (text, pos, size, col): (String, Table, u16, Table)| {
+    let mut position: Vec2 = Vec2::ZERO.clone();
+    position.from_lua(Value::Table(pos)).expect("Invalid Lua Value");
+    let mut color: Color = Color::new(0);
+    color.from_lua(Value::Table(col)).expect("Invalid Lua Value");
+    let btn = TextButton::new(&text, position, size, color);
+    Ok(btn.as_lua(this).expect("Cannot convert TextButton to Lua Value"))
+  })?)?;
+
+  env.set("SpriteButton", lua.create_function(|this, (pos, sz, img) : (Table, Table, Table)| {
+    let mut position: Vec2 = Vec2::ZERO.clone();
+    let mut size: Vec2 = Vec2::ZERO.clone();
+    let mut im: Img = Img::new("");
+    position.from_lua(Value::Table(pos)).expect("Invalid Lua Value");
+    size.from_lua(Value::Table(sz)).expect("Invalid Lua Value");
+    im.from_lua(Value::Table(img)).expect("Invalid Lua Value");
+    let btn = SpriteButton::new(position, size, im);
+    Ok(btn.as_lua(this).expect("Cannot convert SpriteButton to Lua Value"))
   })?)?;
 
   env.set("embed", lua.create_function_mut(|this, (script, node): (String, Table)| {

@@ -41,6 +41,16 @@ impl Text {
       None
     }
   }
+
+  pub fn getTextSize(&self) -> Vec2 {
+    let temp = measure_text(
+      &self.text, 
+      self.font.as_ref(), 
+      self.font_size, 
+      self.scale, 
+    );
+    Vec2::new(temp.width as i32, temp.height as i32)
+  }
 }
 
 impl NodeLike for Text {

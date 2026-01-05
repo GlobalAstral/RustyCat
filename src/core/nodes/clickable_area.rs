@@ -8,7 +8,7 @@ use crate::core::{core::{Downcastable, Luable}, engine::{MAIN_CAMERA, main_camer
 
 pub struct ClickableArea {
   base: Node,
-  transform: Transform
+  pub transform: Transform
 }
 
 impl ClickableArea {
